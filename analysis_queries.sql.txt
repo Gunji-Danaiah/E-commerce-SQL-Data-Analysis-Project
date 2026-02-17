@@ -1,0 +1,94 @@
+-- analysis_queries.sql
+-- Comprehensive SQL Analysis Queries
+
+-- 1. Basic SELECT with WHERE and ORDER BY
+-- Get all completed orders
+SELECT * FROM orders 
+WHERE status = 'completed' 
+ORDER BY order_date DESC;
+
+-- 2. GROUP BY with aggregate functions
+-- Total sales by customer
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    COUNT(o.order_id) AS total_orders,
+    SUM(o.total_amount) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id
+ORDER BY total_spent DESC;
+
+-- 3. INNER JOIN example
+-- Get order details with customer information
+SELECT 
+    o.order_id,
+    o.order_date,
+    o.total_amount,
+    c.first_name,
+    c.last_name,
+    c.email
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.customer_id;
+
+-- 4. LEFT JOIN example
+-- All customers (even those with no orders)
+SELECT 
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    COUNT(o.order_id) AS order_count,
+    IFNULL(SUM(o.total_amount), 0) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id;
+
+-- 5. Subquery example
+-- Find customers who spent more than average
+SELECT 
+    customer_id,
+    customer_name,
+    total_spent
+FROM (
+    SELECT 
+        c.customer_id,
+        c.first_name || ' ' || c.last_name AS customer_name,
+        SUM(o.total_amount) AS total_spent
+    FROM customers c
+    LEFT JOIN orders o ON c.customer_id = o.customer_id
+    GROUP BY c.customer_id
+) 
+WHERE total_spent > (SELECT AVG(total_amount) FROM orders);
+
+-- 6. Average revenue per user (ARPU)
+SELECT 
+    COUNT(DISTINCT customer_id) as total_customers,
+    SUM(total_amount) as total_revenue,
+    SUM(total_amount) / COUNT(DISTINCT customer_id) as avg_revenue_per_user
+FROM orders;
+
+-- 7. Create a VIEW
+CREATE VIEW IF NOT EXISTS customer_spending AS
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.email,
+    COUNT(o.order_id) AS total_orders,
+    IFNULL(SUM(o.total_amount), 0) AS total_spent,
+    IFNULL(AVG(o.total_amount), 0) AS avg_order_value
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id;
+
+-- 8. Query the view
+SELECT * FROM customer_spending ORDER BY total_spent DESC;
+
+-- 9. Handle NULL values
+SELECT 
+    customer_id,
+    customer_name,
+    email,
+    IFNULL(total_orders, 0) AS order_count,
+    IFNULL(total_spent, 0) AS total_spent
+FROM customer_spending
+WHERE total_orders = 0 OR total_orders IS NULL;
